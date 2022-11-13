@@ -1,4 +1,5 @@
 const mongodb = require("mongodb");
+const Product = require("./product");
 const getDB = require("../util/database").getDB;
 
 class User {
@@ -21,7 +22,35 @@ class User {
       });
   }
 
-  async addToCart(product) {
+  getCart() {
+    const db = getDB();
+    const productsId = this.cart.items.map((item) => {
+      return item.productId;
+    });
+    return db
+      .collection("products")
+      .find({ _id: { $in: productsId } })
+      .toArray()
+      .then((products) => {
+        return products.map((product) => {
+          return {
+            ...product,
+            quantity: this.cart.items.find((item) => {
+              return item.productId.toString() === product._id.toString();
+            }).quantity,
+          };
+        });
+      })
+      .then((cartItems) => {
+        // console.log("cart items ==>", cartItems);
+        return cartItems;
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  }
+
+  addToCart(product) {
     const cartProductIndex = this.cart.items.findIndex((cp) => {
       return cp.productId.toString() == product._id.toString();
     });
@@ -37,6 +66,22 @@ class User {
         quantity: 1,
       });
     }
+    const db = getDB();
+    const updatedCart = {
+      items: updatedCartItems,
+    };
+    return db
+      .collection("users")
+      .updateOne(
+        { _id: new mongodb.ObjectId(this.userId) },
+        { $set: { cart: updatedCart } }
+      );
+  }
+
+  deleteFromCart(prodId) {
+    const updatedCartItems = this.cart.items.filter((item) => {
+      return item.productId.toString() !== prodId.toString();
+    });
     const db = getDB();
     const updatedCart = {
       items: updatedCartItems,
