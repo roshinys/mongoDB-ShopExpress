@@ -94,6 +94,40 @@ class User {
       );
   }
 
+  addOrder() {
+    const db = getDB();
+    return this.getCart()
+      .then((products) => {
+        const order = {
+          items: products,
+          user: {
+            _id: new mongodb.ObjectId(this.userId),
+            username: this.username,
+          },
+        };
+        return db.collection("orders").insertOne(order);
+      })
+      .then((result) => {
+        this.cart = { items: [] };
+        return db
+          .collection("users")
+          .updateOne(
+            { _id: new mongodb.ObjectId(this.userId) },
+            { $set: { cart: this.cart } }
+          );
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  }
+  getOrders() {
+    const db = getDB();
+    return db
+      .collection("orders")
+      .find({ "user._id": new mongodb.ObjectId(this.userId) })
+      .toArray();
+  }
+
   static findById(userId) {
     const db = getDB();
     // console.log("inside model user ==>", userId);
